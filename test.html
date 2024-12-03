@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deploy to GitHub Pages</title>
+  <script>
+    async function deployToGitHubPages() {
+      const token = "your_personal_access_token"; // Replace with your GitHub token
+      const username = "your_username"; // Replace with your GitHub username
+      const repo = "your_repo"; // Replace with your repository name
+      const branch = "gh-pages";
+      const filePath = "index.html";
+      const fileContent = `<html><body><h1>Hello GitHub Pages!</h1></body></html>`;
+      
+      // Encode file content to Base64
+      const contentEncoded = btoa(fileContent);
+
+      try {
+        // Check if branch exists
+        const branchCheck = await fetch(
+          `https://api.github.com/repos/${username}/${repo}/branches/${branch}`,
+          {
+            headers: { Authorization: `token ${token}` }
+          }
+        );
+        
+        if (!branchCheck.ok) {
+          // Create branch from default branch
+          const defaultBranch = await fetch(
+            `https://api.github.com/repos/${username}/${repo}`,
+            { headers: { Authorization: `token ${token}` } }
+          ).then(res => res.json());
+
+          const sha = defaultBranch.default_branch_commit.sha;
+
+          await fetch(
+            `https://api.github.com/repos/${username}/${repo}/git/refs`,
+            {
+              method: "POST",
+              headers: { Authorization: `token ${token}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ ref: `refs/heads/${branch}`, sha })
+            }
+          );
+        }
+
+        // Commit the HTML file
+        await fetch(`https://api.github.com/repos/${username}/${repo}/contents/${filePath}`, {
+          method: "PUT",
+          headers: { Authorization: `token ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: "Deploy to GitHub Pages",
+            content: contentEncoded,
+            branch
+          })
+        });
+
+        // Enable GitHub Pages
+        await fetch(
+          `https://api.github.com/repos/${username}/${repo}/pages`,
+          {
+            method: "POST",
+            headers: { Authorization: `token ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ source: { branch, path: "/" } })
+          }
+        );
+
+        alert("Successfully deployed to GitHub Pages!");
+      } catch (error) {
+        console.error("Error deploying to GitHub Pages:", error);
+        alert("Deployment failed. Check the console for details.");
+      }
+    }
+  </script>
+</head>
+<body>
+  <button onclick="deployToGitHubPages()">Deploy to GitHub Pages</button>
+</body>
+</html>
